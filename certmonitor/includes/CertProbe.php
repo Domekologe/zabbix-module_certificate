@@ -63,7 +63,8 @@ class CertProbe {
 		}
 
 		// Step 2: TCP + TLS, accepting any certificate so that even a broken one can be inspected.
-		$peer = self::connect($connect_to, $port, $hostname, false, $error);
+		$sent_chain = [];
+		$peer = self::connect($connect_to, $port, $hostname, false, $error, $sent_chain);
 
 		if ($peer === null) {
 			$result['error'] = $error;
@@ -72,6 +73,8 @@ class CertProbe {
 		}
 
 		$result['connected'] = true;
+		$result['chain'] = self::describeChain($sent_chain);
+		$result['chain_length'] = count($result['chain']);
 
 		// Step 3: parse the certificate that the peer presented.
 		$parsed = @openssl_x509_parse($peer);
@@ -91,6 +94,16 @@ class CertProbe {
 
 		$result['verified'] = $verified;
 		$result['verify_error'] = $verified ? '' : $verify_error;
+
+		// A server that sends only its own certificate leaves the client to find the intermediate on
+		// its own. Browsers and OpenSSL-based tools often paper over that by fetching it via the AIA
+		// extension or by reusing a cached copy; Go - and therefore Zabbix agent 2 - never does, and
+		// reports "certificate signed by unknown authority" instead. Detecting it here explains why
+		// the same CA works elsewhere and fails on this endpoint.
+		$result['chain_incomplete'] = !$verified
+			&& $result['chain_length'] <= 1
+			&& !$result['self_signed'];
+
 		$result['ok'] = true;
 
 		return $result;
@@ -118,8 +131,37 @@ class CertProbe {
 			'alternative_names' => [],
 			'self_signed' => false,
 			'verified' => false,
-			'verify_error' => ''
+			'verify_error' => '',
+			'chain' => [],
+			'chain_length' => 0,
+			'chain_incomplete' => false
 		];
+	}
+
+	/**
+	 * Reduce the certificates the server sent into readable "subject <- issuer" lines.
+	 *
+	 * @param array $chain  Certificate resources captured with capture_peer_cert_chain.
+	 *
+	 * @return array  List of ['subject' => string, 'issuer' => string].
+	 */
+	private static function describeChain(array $chain): array {
+		$described = [];
+
+		foreach ($chain as $certificate) {
+			$parsed = @openssl_x509_parse($certificate);
+
+			if (!is_array($parsed)) {
+				continue;
+			}
+
+			$described[] = [
+				'subject' => self::distinguishedName($parsed['subject'] ?? []),
+				'issuer' => self::distinguishedName($parsed['issuer'] ?? [])
+			];
+		}
+
+		return $described;
 	}
 
 	/**
@@ -167,12 +209,18 @@ class CertProbe {
 	 *
 	 * @return mixed  The peer certificate (an OpenSSL certificate resource/object), or null on failure.
 	 */
-	private static function connect(string $connect_to, int $port, string $sni, bool $verify, ?string &$error) {
+	private static function connect(string $connect_to, int $port, string $sni, bool $verify, ?string &$error,
+			?array &$chain = null) {
 		$error = '';
+		$chain = [];
 
 		$context = stream_context_create([
 			'ssl' => [
 				'capture_peer_cert' => true,
+				// The chain the server actually sends is the single most useful diagnostic for
+				// "certificate signed by unknown authority": Go, and therefore the Zabbix agent, does
+				// not fetch a missing intermediate via AIA the way browsers do.
+				'capture_peer_cert_chain' => true,
 				'verify_peer' => $verify,
 				'verify_peer_name' => $verify,
 				'allow_self_signed' => !$verify,
@@ -223,6 +271,11 @@ class CertProbe {
 			$error = _('The TLS handshake succeeded but the peer certificate could not be captured.');
 
 			return null;
+		}
+
+		if (array_key_exists('peer_certificate_chain', $params['options']['ssl'])
+				&& is_array($params['options']['ssl']['peer_certificate_chain'])) {
+			$chain = $params['options']['ssl']['peer_certificate_chain'];
 		}
 
 		return $params['options']['ssl']['peer_certificate'];

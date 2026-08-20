@@ -148,6 +148,19 @@ class CertCheck extends CController {
 			$rows[] = [_('Self-signed'), _('yes')];
 		}
 
+		// What the server actually sent. One certificate means the intermediate is missing.
+		$rows[] = [_('Certificates sent by the server'), $result['chain_length'] > 0
+			? _n('%1$s certificate', '%1$s certificates', $result['chain_length'])
+			: _('unknown')
+		];
+
+		foreach ($result['chain'] as $index => $link) {
+			$rows[] = [
+				_s('  %1$s.', (string) ($index + 1)),
+				_s('%1$s  <-  issued by  %2$s', $link['subject'], $link['issuer'])
+			];
+		}
+
 		$rows[] = [_('Chain verification'), $result['verified']
 			? _('successful')
 			: _s('failed: %1$s', $result['verify_error'] !== ''
@@ -155,6 +168,12 @@ class CertCheck extends CController {
 				: _('the certificate is not trusted by the frontend server')
 			)
 		];
+
+		if ($result['chain_incomplete']) {
+			$rows[] = [_('Likely cause'),
+				_('The server sends only its own certificate, without the intermediate CA. Browsers usually hide this by fetching the missing certificate via the AIA extension or by reusing a cached copy - Zabbix agent 2 does neither and reports "certificate signed by unknown authority". Install the full chain on the server; the same CA can work fine on another endpoint that does send it.')
+			];
+		}
 
 		$expired = $result['days_left'] !== null && $result['days_left'] < 0;
 

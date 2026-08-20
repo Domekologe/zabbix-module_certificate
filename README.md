@@ -907,6 +907,45 @@ If you would rather keep it under `ui/widgets/`, change the namespace prefix fro
 `Widgets\` in all three PHP files (`Widget.php`, `actions/WidgetView.php`, `includes/WidgetForm.php`).
 Nothing else needs to change.
 
+**"certificate signed by unknown authority" — but the same CA is accepted elsewhere**
+
+This is almost never about the certificate itself and never about it being a wildcard. It means the
+endpoint **sends only its own certificate and not the intermediate CA**. Browsers and most
+OpenSSL-based tools paper over that by fetching the missing intermediate through the certificate's AIA
+extension or by reusing a cached copy. Go's `crypto/x509` — and therefore Zabbix agent 2 — does
+neither, and AIA support is explicitly absent from `web.certificate.get`. So the very same CA works on
+an endpoint that serves the full chain and fails on one that does not.
+
+A second, less common cause: two certificates from the same vendor can be issued by **different
+intermediates**. Compare the issuer DNs rather than assuming "both are GoDaddy".
+
+Count what each endpoint actually sends:
+
+```bash
+echo | openssl s_client -connect HOST:443 -servername HOST -showcerts 2>/dev/null \
+  | grep -c "BEGIN CERTIFICATE"
+```
+
+A public site returns 3 or 4. **A result of 1 is the problem** — the leaf without its issuer. Compare
+the failing endpoint with the working one; the difference is usually exactly this number.
+
+To see the issuers of everything that was sent:
+
+```bash
+echo | openssl s_client -connect HOST:443 -servername HOST -showcerts 2>/dev/null \
+  | openssl crl2pkcs7 -nocrl -certfile /dev/stdin \
+  | openssl pkcs7 -print_certs -noout
+```
+
+The module's **Test connection** button in the add/edit form reports the same thing: how many
+certificates the server sent, each one as `subject <- issued by issuer`, and an explicit *Likely
+cause* line when only the leaf arrives.
+
+**Fix**: install the full chain (leaf + intermediate) on that endpoint. That also fixes Java clients,
+`curl` on minimal images, Go services and mobile apps, which fail the same way. Until then, tick
+**Ignore certificate validation errors** for that website so the expiry monitoring keeps working
+without a permanent validation problem.
+
 **A wildcard certificate is reported as "invalid"**
 
 The validation result is **not** produced by this module. It is `$.result.value` from the Zabbix
