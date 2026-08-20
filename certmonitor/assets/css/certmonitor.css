@@ -1,0 +1,145 @@
+/* Certificate Monitor - module styles. */
+
+.certmonitor-hint {
+	margin-top: 4px;
+	font-size: 11px;
+	line-height: 1.4;
+	max-width: 453px;
+	color: #768d99;
+}
+
+/* Small "validation ignored" marker shown next to the validation result in the list. */
+.certmonitor-marker {
+	margin-left: 6px;
+	cursor: default;
+}
+
+/* Section heading of the website detail page. */
+.certmonitor-section {
+	margin: 16px 0 6px 0;
+	font-weight: bold;
+}
+
+/* Button row at the bottom of the website detail page. */
+.certmonitor-actions {
+	margin-top: 16px;
+}
+
+/* Long values (expressions, keys, fingerprints) shown in a monospace font. */
+.certmonitor-mono {
+	font-family: monospace;
+	word-break: break-all;
+}
+
+/* Explanatory paragraph above a form. */
+.certmonitor-intro {
+	margin-bottom: 12px;
+}
+
+/* A short remark under a table on the detail page. */
+.certmonitor-note {
+	margin: 6px 0;
+	line-height: 1.4;
+}
+
+/* Separator between the per-row action links of the list. */
+.certmonitor-action-separator {
+	margin: 0 4px;
+	opacity: 0.5;
+}
+
+/* ------------------------------------------------------------ summary counters -- */
+
+.certmonitor-summary {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 20px;
+	margin: 0 0 10px 0;
+}
+
+.certmonitor-summary-item {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+}
+
+.certmonitor-summary-label {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+	color: #768d99;
+}
+
+.certmonitor-summary-value {
+	font-size: 16px;
+	font-weight: bold;
+}
+
+/* ------------------------------------------------------- "Test connection" result -- */
+
+.certmonitor-check-result {
+	margin-top: 8px;
+	max-width: 640px;
+	line-height: 1.5;
+}
+
+.certmonitor-check-result:empty {
+	display: none;
+}
+
+.certmonitor-check-result.certmonitor-check-ok,
+.certmonitor-check-result.certmonitor-check-warning,
+.certmonitor-check-result.certmonitor-check-error,
+.certmonitor-check-result.certmonitor-check-pending {
+	padding: 8px 10px;
+	border-left: 3px solid #768d99;
+	background-color: rgba(118, 141, 153, 0.08);
+}
+
+.certmonitor-check-ok {
+	border-left-color: #59db8f;
+}
+
+.certmonitor-check-warning {
+	border-left-color: #ffc859;
+}
+
+.certmonitor-check-error {
+	border-left-color: #e45959;
+}
+
+.certmonitor-check-summary {
+	font-weight: bold;
+	margin-bottom: 4px;
+}
+
+.certmonitor-check-row {
+	display: flex;
+	gap: 8px;
+	font-size: 12px;
+}
+
+.certmonitor-check-label {
+	flex: 0 0 200px;
+	color: #768d99;
+}
+
+.certmonitor-check-value {
+	flex: 1 1 auto;
+	word-break: break-all;
+}
+
+.certmonitor-check-caveat {
+	margin-top: 6px;
+	font-size: 11px;
+	color: #768d99;
+}
+
+/* Error boundary shown when the list page cannot be rendered. */
+.certmonitor-error {
+	margin: 12px 0;
+	padding: 12px 14px;
+	border: 1px solid #d64e4e;
+	border-radius: 3px;
+	line-height: 1.6;
+}

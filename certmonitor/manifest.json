@@ -1,0 +1,94 @@
+{
+	"manifest_version": 2.0,
+	"id": "dks_certmonitor",
+	"name": "Certificate Monitor",
+	"version": "1.2.0",
+	"namespace": "CertMonitor",
+	"author": "Domekologe",
+	"description": "Adds a Monitoring -> Certificates page that creates, edits and lists TLS/SSL certificate monitoring hosts based on the Zabbix agent 2 item key web.certificate.get. Contact: support@domekologe.eu",
+	"url": "https://www.zabbix.com/documentation/current/en/manual/guides/monitor_certificate",
+	"actions": {
+		"certmonitor.list": {
+			"class": "CertList",
+			"view": "certmonitor.list",
+			"layout": "layout.htmlpage"
+		},
+		"certmonitor.list.csv": {
+			"class": "CertList",
+			"view": "certmonitor.list.csv",
+			"layout": "layout.csv"
+		},
+		"certmonitor.view": {
+			"class": "CertView",
+			"view": "certmonitor.view",
+			"layout": "layout.htmlpage"
+		},
+		"certmonitor.edit": {
+			"class": "CertEdit",
+			"view": "certmonitor.edit",
+			"layout": "layout.htmlpage"
+		},
+		"certmonitor.create": {
+			"class": "CertCreate"
+		},
+		"certmonitor.import": {
+			"class": "CertImport",
+			"view": "certmonitor.import",
+			"layout": "layout.htmlpage"
+		},
+		"certmonitor.import.create": {
+			"class": "CertImportCreate"
+		},
+		"certmonitor.update": {
+			"class": "CertUpdate"
+		},
+		"certmonitor.delete": {
+			"class": "CertDelete"
+		},
+		"certmonitor.enable": {
+			"class": "CertEnable"
+		},
+		"certmonitor.disable": {
+			"class": "CertDisable"
+		},
+		"certmonitor.execute": {
+			"class": "CertExecuteNow"
+		},
+		"certmonitor.check": {
+			"class": "CertCheck",
+			"layout": "layout.json"
+		},
+		"certmonitor.settings": {
+			"class": "CertSettings",
+			"view": "certmonitor.settings",
+			"layout": "layout.htmlpage"
+		},
+		"certmonitor.settings.update": {
+			"class": "CertSettingsUpdate"
+		}
+	},
+	"assets": {
+		"css": ["certmonitor.css"],
+		"js": ["certmonitor.js"]
+	},
+	"config": {
+		"default_port": "443",
+		"default_agent_address": "127.0.0.1",
+		"default_agent_port": "10050",
+		"default_groupid": "",
+		"default_warn_days": "30",
+		"default_avg_days": "14",
+		"default_crit_days": "7",
+		"default_ignore_validation": "0",
+		"default_delay": "1h",
+		"host_prefix": "cert_",
+		"default_sec_issuer_changed": "0",
+		"default_sec_fingerprint_changed": "0",
+		"default_sec_weak_key": "0",
+		"default_sec_weak_signature": "0",
+		"default_weak_key_algorithms": "DSA|Unknown",
+		"default_weak_signature_algorithms": "SHA1|MD5|MD2",
+		"default_issuer_severity": "3",
+		"default_fingerprint_severity": "2"
+	}
+}

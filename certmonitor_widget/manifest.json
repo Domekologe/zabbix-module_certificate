@@ -1,0 +1,23 @@
+{
+	"manifest_version": 2.0,
+	"id": "dks_certmonitor_widget",
+	"type": "widget",
+	"name": "Certificate expiry",
+	"namespace": "CertMonitorWidget",
+	"version": "1.0.0",
+	"author": "Domekologe",
+	"description": "Dashboard widget of the Certificate Monitor module. Lists the certificates that expire soonest, colour-coded by the remaining days, with a link to the certificate detail page. Contact: support@domekologe.eu",
+	"url": "https://www.zabbix.com/documentation/current/en/manual/guides/monitor_certificate",
+	"widget": {
+		"size": {
+			"width": 24,
+			"height": 5
+		},
+		"refresh_rate": 900
+	},
+	"actions": {
+		"widget.dks_certmonitor_widget.view": {
+			"class": "WidgetView"
+		}
+	}
+}

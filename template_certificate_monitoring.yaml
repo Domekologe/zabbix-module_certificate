@@ -1,0 +1,270 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: a82307ce35ff47b4986d1a1e64329ae2
+      name: Templates/Applications
+  templates:
+    - uuid: b1636b554af2442095fc75429d187fc5
+      template: 'Website certificate monitoring'
+      name: 'Website certificate monitoring'
+      description: |
+        Monitors the TLS/SSL certificate of one website using the Zabbix agent 2 item key web.certificate.get.
+
+        Requirements:
+        - Zabbix agent 2 (the WebCertificate plugin is built in; the classic C agent does NOT support this key).
+        - The host must have a "Zabbix agent" interface pointing at the machine that runs Zabbix agent 2.
+          That machine performs the outgoing TLS connection to the website.
+
+        Configure the target by setting the host macros {$CERT.WEBSITE.HOSTNAME}, {$CERT.WEBSITE.PORT}
+        and optionally {$CERT.WEBSITE.IP}.
+
+        This template is the template-only alternative to the "certmonitor" Zabbix frontend module and
+        creates the same items and triggers.
+
+        Reference:
+        https://www.zabbix.com/documentation/7.4/en/manual/config/items/itemtypes/zabbix_agent/zabbix_agent2
+        https://www.zabbix.com/documentation/current/en/manual/guides/monitor_certificate
+      groups:
+        - name: Templates/Applications
+      items:
+        - uuid: c1e56bd35311413bb36fa15bbb0d5d91
+          name: 'Certificate: Get'
+          type: ZABBIX_PASSIVE
+          key: 'web.certificate.get[{$CERT.WEBSITE.HOSTNAME},{$CERT.WEBSITE.PORT},{$CERT.WEBSITE.IP}]'
+          delay: 1h
+          history: '0'
+          value_type: TEXT
+          description: 'Returns a JSON object with the attributes of the certificate of the requested website.'
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 6h
+          tags:
+            - tag: component
+              value: raw
+        - uuid: d5941cc5ffd84f50a56c42ae1f4ec9dd
+          name: 'Certificate: Expires on'
+          type: DEPENDENT
+          key: cert.not_after
+          history: 90d
+          trends: '0'
+          units: unixtime
+          description: 'The date on which the certificate validity period ends (UNIX timestamp).'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.x509.not_after.timestamp
+          master_item:
+            key: 'web.certificate.get[{$CERT.WEBSITE.HOSTNAME},{$CERT.WEBSITE.PORT},{$CERT.WEBSITE.IP}]'
+          tags:
+            - tag: component
+              value: cert
+          triggers:
+            - uuid: 9744d0f45d8a4293bb98d94fb4329c69
+              expression: '(last(/Website certificate monitoring/cert.not_after) - now()) < 0'
+              name: 'Certificate: expired'
+              event_name: 'Certificate [{$CERT.WEBSITE.HOSTNAME}:{$CERT.WEBSITE.PORT}]: expired'
+              priority: DISASTER
+              description: 'The certificate validity period has ended. Renew the certificate immediately.'
+              manual_close: 'YES'
+              dependencies:
+                - name: 'Certificate: validation failed'
+                  expression: 'find(/Website certificate monitoring/cert.validation,,"like","invalid")=1'
+              tags:
+                - tag: scope
+                  value: notice
+            - uuid: 08be4c2198e24dcb8ac8be932a470eed
+              expression: '(last(/Website certificate monitoring/cert.not_after) - now()) / 86400 < {$CERT.EXPIRY.CRIT}'
+              name: 'Certificate: expires in less than {$CERT.EXPIRY.CRIT} days'
+              event_name: 'Certificate [{$CERT.WEBSITE.HOSTNAME}:{$CERT.WEBSITE.PORT}]: expires in less than {$CERT.EXPIRY.CRIT} days'
+              priority: HIGH
+              description: 'The certificate expires very soon and must be renewed.'
+              manual_close: 'YES'
+              dependencies:
+                - name: 'Certificate: expired'
+                  expression: '(last(/Website certificate monitoring/cert.not_after) - now()) < 0'
+              tags:
+                - tag: scope
+                  value: notice
+            - uuid: ad5d0d27ced846dbaef74b833dd0fca5
+              expression: '(last(/Website certificate monitoring/cert.not_after) - now()) / 86400 < {$CERT.EXPIRY.AVG}'
+              name: 'Certificate: expires in less than {$CERT.EXPIRY.AVG} days'
+              event_name: 'Certificate [{$CERT.WEBSITE.HOSTNAME}:{$CERT.WEBSITE.PORT}]: expires in less than {$CERT.EXPIRY.AVG} days'
+              priority: AVERAGE
+              description: 'The certificate expires soon and should be renewed.'
+              manual_close: 'YES'
+              dependencies:
+                - name: 'Certificate: expires in less than {$CERT.EXPIRY.CRIT} days'
+                  expression: '(last(/Website certificate monitoring/cert.not_after) - now()) / 86400 < {$CERT.EXPIRY.CRIT}'
+              tags:
+                - tag: scope
+                  value: notice
+            - uuid: 22f6b0658f5943fb972510ff4d2f19ad
+              expression: '(last(/Website certificate monitoring/cert.not_after) - now()) / 86400 < {$CERT.EXPIRY.WARN}'
+              name: 'Certificate: expires in less than {$CERT.EXPIRY.WARN} days'
+              event_name: 'Certificate [{$CERT.WEBSITE.HOSTNAME}:{$CERT.WEBSITE.PORT}]: expires in less than {$CERT.EXPIRY.WARN} days'
+              priority: WARNING
+              description: 'The certificate should be scheduled for renewal.'
+              manual_close: 'YES'
+              dependencies:
+                - name: 'Certificate: expires in less than {$CERT.EXPIRY.AVG} days'
+                  expression: '(last(/Website certificate monitoring/cert.not_after) - now()) / 86400 < {$CERT.EXPIRY.AVG}'
+              tags:
+                - tag: scope
+                  value: notice
+        - uuid: e634b3a9a9b346c2823c0823e18e8931
+          name: 'Certificate: Expires on (text)'
+          type: DEPENDENT
+          key: cert.not_after.value
+          value_type: CHAR
+          description: 'The date on which the certificate validity period ends, as reported by the agent.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.x509.not_after.value
+          master_item:
+            key: 'web.certificate.get[{$CERT.WEBSITE.HOSTNAME},{$CERT.WEBSITE.PORT},{$CERT.WEBSITE.IP}]'
+          tags:
+            - tag: component
+              value: cert
+        - uuid: 70eb8007a34e47f3aacd4a9afbfdf3ff
+          name: 'Certificate: Valid from'
+          type: DEPENDENT
+          key: cert.not_before
+          history: 90d
+          trends: '0'
+          units: unixtime
+          description: 'The date on which the certificate validity period begins (UNIX timestamp).'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.x509.not_before.timestamp
+          master_item:
+            key: 'web.certificate.get[{$CERT.WEBSITE.HOSTNAME},{$CERT.WEBSITE.PORT},{$CERT.WEBSITE.IP}]'
+          tags:
+            - tag: component
+              value: cert
+        - uuid: 21b0d4ad067846eeb87f81a46133cab2
+          name: 'Certificate: Issuer'
+          type: DEPENDENT
+          key: cert.issuer
+          value_type: TEXT
+          description: 'The entity that signed and issued the certificate.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.x509.issuer
+          master_item:
+            key: 'web.certificate.get[{$CERT.WEBSITE.HOSTNAME},{$CERT.WEBSITE.PORT},{$CERT.WEBSITE.IP}]'
+          tags:
+            - tag: component
+              value: cert
+        - uuid: 8b540bfcedf9480cbd3e1676750a9b1c
+          name: 'Certificate: Subject'
+          type: DEPENDENT
+          key: cert.subject
+          value_type: TEXT
+          description: 'The entity associated with the public key stored in the certificate.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.x509.subject
+          master_item:
+            key: 'web.certificate.get[{$CERT.WEBSITE.HOSTNAME},{$CERT.WEBSITE.PORT},{$CERT.WEBSITE.IP}]'
+          tags:
+            - tag: component
+              value: cert
+        - uuid: e90f5b9dbf1c45c2932ed608888df6b0
+          name: 'Certificate: Subject alternative names'
+          type: DEPENDENT
+          key: cert.alternative_names
+          value_type: TEXT
+          description: 'Subject alternative names of the certificate, if present.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.x509.alternative_names
+          master_item:
+            key: 'web.certificate.get[{$CERT.WEBSITE.HOSTNAME},{$CERT.WEBSITE.PORT},{$CERT.WEBSITE.IP}]'
+          tags:
+            - tag: component
+              value: cert
+        - uuid: 62961ccd554d422f844dac5a1a0e823a
+          name: 'Certificate: Validation result'
+          type: DEPENDENT
+          key: cert.validation
+          value_type: CHAR
+          description: 'Certificate validation result. Possible values: valid, valid-but-self-signed, invalid.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.result.value
+          master_item:
+            key: 'web.certificate.get[{$CERT.WEBSITE.HOSTNAME},{$CERT.WEBSITE.PORT},{$CERT.WEBSITE.IP}]'
+          tags:
+            - tag: component
+              value: cert
+          triggers:
+            - uuid: cb936c1643d14ff08ce0837fa39266af
+              expression: 'find(/Website certificate monitoring/cert.validation,,"like","invalid")=1'
+              name: 'Certificate: validation failed'
+              event_name: 'Certificate [{$CERT.WEBSITE.HOSTNAME}:{$CERT.WEBSITE.PORT}]: validation failed'
+              priority: AVERAGE
+              description: 'The certificate is invalid: expired, issued for another domain or signed by an unknown authority.'
+              manual_close: 'YES'
+              tags:
+                - tag: scope
+                  value: security
+        - uuid: 491b9098e98241beaed9dbacc879e6e8
+          name: 'Certificate: Last validation message'
+          type: DEPENDENT
+          key: cert.message
+          value_type: TEXT
+          description: 'Detailed message of the latest certificate validation.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.result.message
+          master_item:
+            key: 'web.certificate.get[{$CERT.WEBSITE.HOSTNAME},{$CERT.WEBSITE.PORT},{$CERT.WEBSITE.IP}]'
+          tags:
+            - tag: component
+              value: cert
+        - uuid: 3f1d5b0a6c1f4a35a2f0f2b6f7c9d101
+          name: 'Certificate: Fingerprint (SHA-256)'
+          type: DEPENDENT
+          key: cert.sha256_fingerprint
+          value_type: CHAR
+          description: 'The SHA-256 fingerprint of the certificate.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.sha256_fingerprint
+          master_item:
+            key: 'web.certificate.get[{$CERT.WEBSITE.HOSTNAME},{$CERT.WEBSITE.PORT},{$CERT.WEBSITE.IP}]'
+          tags:
+            - tag: component
+              value: cert
+      tags:
+        - tag: class
+          value: software
+        - tag: target
+          value: certificate
+      macros:
+        - macro: '{$CERT.EXPIRY.WARN}'
+          value: '30'
+          description: 'Days before expiry that raise a WARNING problem.'
+        - macro: '{$CERT.EXPIRY.AVG}'
+          value: '14'
+          description: 'Days before expiry that raise an AVERAGE problem.'
+        - macro: '{$CERT.EXPIRY.CRIT}'
+          value: '7'
+          description: 'Days before expiry that raise a HIGH problem.'
+        - macro: '{$CERT.WEBSITE.HOSTNAME}'
+          value: '<Enter DNS name>'
+          description: 'DNS name of the monitored website.'
+        - macro: '{$CERT.WEBSITE.PORT}'
+          value: '443'
+          description: 'TLS/SSL port number of the monitored website.'
+        - macro: '{$CERT.WEBSITE.IP}'
+          description: 'Optional address used for the connection instead of the DNS name.'
