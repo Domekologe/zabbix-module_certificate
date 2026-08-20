@@ -225,17 +225,6 @@ Documented limitations of the agent check:
 
 ## Installation
 
-> **Upgrading from a build before 1.2.0:** the module IDs changed from `ilf_certmonitor` /
-> `ilf_certmonitor_widget` to `dks_certmonitor` / `dks_certmonitor_widget`. Zabbix keys the `module`
-> database table by ID, so after **Scan directory** the old entries disappear and the new ones show up
-> as freshly discovered modules — enable them again. One useful side effect: because a new ID counts
-> as a first discovery, the `config` defaults from `manifest.json` are written to the database this
-> time, which they are not for an already registered module. Settings you had entered on the settings
-> page are tied to the old ID and have to be entered once more.
->
-> The monitored hosts, items and triggers are unaffected by the rename — they are ordinary Zabbix
-> objects and keep collecting data throughout.
-
 1. Copy the `certmonitor` directory into the `modules` directory of the Zabbix frontend:
 
    ```
