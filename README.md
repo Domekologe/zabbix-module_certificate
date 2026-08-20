@@ -885,6 +885,36 @@ item key.
 
 ## Troubleshooting
 
+**"Wrong Widget.php class name for module located at widgets/certmonitor_widget."**
+
+The widget was copied into `ui/widgets/` instead of `ui/modules/`. Move it:
+
+```bash
+rm -rf /usr/share/zabbix/ui/widgets/certmonitor_widget
+cp -r  certmonitor_widget /usr/share/zabbix/ui/modules/
+```
+
+then **Scan directory** again and enable the module.
+
+Why this happens: `CModuleManager::loadManifest()` derives the PHP namespace prefix from the *first
+segment of the directory path*, not from the module type:
+
+```php
+$manifest['namespace'] = ucfirst($relative_path_parts[0]).'\\'.$manifest['namespace'];
+```
+
+So `modules/certmonitor_widget` expects the class `Modules\CertMonitorWidget\Widget`, while
+`widgets/certmonitor_widget` expects `Widgets\CertMonitorWidget\Widget`. The shipped files declare
+`Modules\…`, hence the mismatch. `initModules()` then reports exactly the message above.
+
+Placing the widget in `ui/modules/` is also the right choice regardless: `ui/widgets/` holds the
+widgets shipped with Zabbix and is replaced on upgrade. The `"type": "widget"` key in the manifest —
+not the directory — is what makes it a dashboard widget, so it appears in *Add widget* normally.
+
+If you would rather keep it under `ui/widgets/`, change the namespace prefix from `Modules\` to
+`Widgets\` in all three PHP files (`Widget.php`, `actions/WidgetView.php`, `includes/WidgetForm.php`).
+Nothing else needs to change.
+
 **The module does not appear in Administration -> General -> Modules**
 
 * Click **Scan directory** again.
