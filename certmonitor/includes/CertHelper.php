@@ -679,6 +679,118 @@ class CertHelper {
 	}
 
 	/**
+	 * Check whether a host name is covered by a single certificate name, wildcards included.
+	 *
+	 * Follows the matching rules of RFC 6125 / Go's crypto/x509 VerifyHostname, which is what the
+	 * Zabbix agent 2 uses internally:
+	 *   - matching is case-insensitive and ignores one trailing dot,
+	 *   - a wildcard is only allowed as the complete leftmost label ("*.example.com"),
+	 *     so "w*.example.com" and "*w.example.com" never match,
+	 *   - a wildcard replaces exactly ONE label: "*.example.com" matches "www.example.com"
+	 *     but neither "example.com" nor "a.b.example.com",
+	 *   - a wildcard never matches an IP address.
+	 *
+	 * @param string $hostname  The name the certificate is checked against.
+	 * @param string $pattern   A single DNS name or wildcard pattern out of the certificate.
+	 *
+	 * @return bool
+	 */
+	public static function nameMatches(string $hostname, string $pattern): bool {
+		$hostname = rtrim(trim(mb_strtolower($hostname)), '.');
+		$pattern = rtrim(trim(mb_strtolower($pattern)), '.');
+
+		if ($hostname === '' || $pattern === '') {
+			return false;
+		}
+
+		if (strpos($pattern, '*') === false) {
+			return $hostname === $pattern;
+		}
+
+		// A wildcard is meaningless for an IP address.
+		if (filter_var($hostname, FILTER_VALIDATE_IP) !== false) {
+			return false;
+		}
+
+		$pattern_labels = explode('.', $pattern);
+
+		// Only the leftmost label may be a wildcard, and it must be exactly "*".
+		if ($pattern_labels[0] !== '*') {
+			return false;
+		}
+
+		foreach (array_slice($pattern_labels, 1) as $label) {
+			if (strpos($label, '*') !== false) {
+				return false;
+			}
+		}
+
+		$host_labels = explode('.', $hostname);
+
+		// Same number of labels: the wildcard stands for exactly one label, never for none and
+		// never for several.
+		if (count($host_labels) !== count($pattern_labels)) {
+			return false;
+		}
+
+		return array_slice($host_labels, 1) === array_slice($pattern_labels, 1);
+	}
+
+	/**
+	 * Work out whether the monitored host name is covered by the certificate.
+	 *
+	 * This is a diagnostic aid only. The authoritative validation is done by the Zabbix agent and
+	 * reported in $.result.value - this method exists to tell a name mismatch apart from the other
+	 * reasons a certificate can be rejected (untrusted CA, expired, and so on), because the two look
+	 * identical in the list otherwise.
+	 *
+	 * @param string      $hostname          The monitored host name.
+	 * @param string|null $subject           Subject DN of the certificate, used as a CN fallback.
+	 * @param string|null $alternative_names Subject alternative names as a separated list.
+	 *
+	 * @return array  ['checked' => bool, 'matches' => bool, 'matched_name' => string, 'candidates' => string[]]
+	 */
+	public static function checkNameMatch(string $hostname, ?string $subject,
+			?string $alternative_names): array {
+		$result = ['checked' => false, 'matches' => false, 'matched_name' => '', 'candidates' => []];
+
+		$hostname = trim($hostname);
+
+		if ($hostname === '') {
+			return $result;
+		}
+
+		$candidates = self::splitAlternativeNames($alternative_names);
+		$names = array_merge($candidates['dns'], $candidates['ips']);
+
+		// Certificates without a SAN extension are long deprecated, but fall back to the subject CN
+		// so that such a certificate does not silently report "not checked".
+		if (!$names && $subject !== null && $subject !== '') {
+			if (preg_match('/(?:^|[,\/])\s*CN\s*=\s*([^,\/]+)/i', $subject, $matches)) {
+				$names[] = trim($matches[1]);
+			}
+		}
+
+		if (!$names) {
+			return $result;
+		}
+
+		$result['checked'] = true;
+		$result['candidates'] = $names;
+
+		foreach ($names as $name) {
+			if (self::nameMatches($hostname, $name)) {
+				$result['matches'] = true;
+				$result['matched_name'] = $name;
+
+				break;
+			}
+		}
+
+		return $result;
+	}
+
+	/**
 	 * Decode the raw JSON document returned by web.certificate.get.
 	 *
 	 * @param string|null $raw

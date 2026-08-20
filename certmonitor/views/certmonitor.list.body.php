@@ -257,11 +257,20 @@ foreach ($data['websites'] as $website) {
 		$days_cell = (new CSpan(_('No data')))->addClass(ZBX_STYLE_GREY);
 	}
 
-	// Validation result.
+	// Validation result. The agent's own message says WHY a certificate was rejected - hostname
+	// mismatch, unknown authority, expired - so it is attached as a hint instead of being hidden on
+	// the detail page. Without it, "invalid" alone sends people hunting.
 	if ($website['validation'] !== null && $website['validation'] !== '') {
-		$validation_cell = [
-			(new CSpan($website['validation']))->addClass(CertHelper::validationStyle($website['validation']))
-		];
+		$validation_span = (new CSpan($website['validation']))
+			->addClass(CertHelper::validationStyle($website['validation']));
+
+		if ($website['message'] !== null && $website['message'] !== '') {
+			$validation_span
+				->addClass('certmonitor-marker')
+				->setHint($website['message']);
+		}
+
+		$validation_cell = [$validation_span];
 	}
 	else {
 		$validation_cell = [(new CSpan(_('No data')))->addClass(ZBX_STYLE_GREY)];

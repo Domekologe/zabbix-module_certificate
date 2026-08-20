@@ -101,6 +101,15 @@ class CertView extends CController {
 				&& $this->checkAccess(CRoleHelper::UI_CONFIGURATION_HOSTS)
 		];
 
+		// Diagnostic only: does the monitored name fall under the certificate's names, wildcards
+		// included? A hostname mismatch and an untrusted CA both surface as "invalid" in the agent's
+		// validation result, and telling them apart is the first thing anybody wants to know.
+		$data['name_match'] = CertHelper::checkNameMatch(
+			$data['website'],
+			$data['certificate']['fields']['subject'] ?? null,
+			$data['certificate']['fields']['alternative_names'] ?? null
+		);
+
 		$response = new CControllerResponseData($data);
 		$response->setTitle(_s('Certificate: %1$s', $host['name']));
 

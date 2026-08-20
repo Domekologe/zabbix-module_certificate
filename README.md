@@ -915,6 +915,33 @@ If you would rather keep it under `ui/widgets/`, change the namespace prefix fro
 `Widgets\` in all three PHP files (`Widget.php`, `actions/WidgetView.php`, `includes/WidgetForm.php`).
 Nothing else needs to change.
 
+**A wildcard certificate is reported as "invalid"**
+
+The validation result is **not** produced by this module. It is `$.result.value` from the Zabbix
+agent 2 item, and the agent uses Go's `crypto/x509` verification — which does understand wildcards.
+So an "invalid" on a wildcard certificate is almost always one of these:
+
+| Cause | Example |
+|---|---|
+| The monitored name is the **apex** | certificate `*.example.com`, monitored `example.com` — a wildcard covers exactly one label and never the bare domain |
+| The name is **too deep** | certificate `*.example.com`, monitored `a.b.example.com` — one wildcard, one label |
+| Monitored by **IP address** | a wildcard can never match an IP; the certificate needs an IP SAN |
+| The **CA is not trusted** by the agent host | internal CA missing from the agent machine's trust store — nothing to do with the wildcard |
+| The hostname macro contains extra parts | `{$CERT.WEBSITE.HOSTNAME}` must be a bare host name, not a URL with scheme or path |
+
+To tell these apart, the module shows two things:
+
+* the **agent's own validation message** (`$.result.message`) as a hover hint on the `invalid` marker
+  in the list — that message names the actual reason,
+* a **Name match** row at the top of the certificate section on the detail page. It re-checks the
+  monitored host name against the certificate's SANs (falling back to the subject CN) using the
+  RFC 6125 rules, wildcards included, and reports which name covers the host — or, if none does, the
+  full list of names that were checked.
+
+If the name matches but the agent still says `invalid`, the problem is the trust chain, not the name.
+Either add the CA to the agent host's trust store, or tick **Ignore certificate validation errors**
+on that website.
+
 **The module does not appear in Administration -> General -> Modules**
 
 * Click **Scan directory** again.

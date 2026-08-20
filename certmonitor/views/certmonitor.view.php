@@ -292,7 +292,33 @@ else {
 		? $orNoData(null)
 		: (new CSpan($validation_result))->addClass(CertHelper::validationStyle($validation_result));
 
+	// Name match, wildcards included. Purely a diagnostic: the agent decides what is valid, but a
+	// hostname mismatch and an untrusted CA both read as "invalid", and this row separates the two.
+	$name_match = $data['name_match'];
+
+	if (!$name_match['checked']) {
+		$name_match_value = (new CSpan(_('not checked - the certificate reports no names')))
+			->addClass(ZBX_STYLE_GREY);
+	}
+	elseif ($name_match['matches']) {
+		$name_match_value = (new CSpan(_s('covered by "%1$s"', $name_match['matched_name'])))
+			->addClass(ZBX_STYLE_GREEN);
+
+		if (strpos($name_match['matched_name'], '*') !== false) {
+			$name_match_value = [$name_match_value, ' ', (new CSpan(_('wildcard')))->addClass(ZBX_STYLE_GREY)];
+		}
+	}
+	else {
+		$name_match_value = (new CSpan(_('no name in the certificate covers the monitored host')))
+			->addClass(ZBX_STYLE_RED);
+		$name_match_value->setHint(
+			_('A wildcard covers exactly one label: "*.example.com" matches "www.example.com", but neither "example.com" nor "a.b.example.com". Checked against: ')
+				.implode(', ', $name_match['candidates'])
+		);
+	}
+
 	$certificate_rows = [
+		_('Name match') => $name_match_value,
 		_('Version') => $orNoData($fields['version']),
 		_('Serial number') => $fields['serial_number'] === null
 			? $orNoData(null)
