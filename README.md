@@ -8,6 +8,9 @@ user macros through the internal Zabbix API.
 A **template-only alternative** is provided in `template_certificate_monitoring.yaml` for
 installations where a frontend module cannot be installed.
 
+![Overview](https://cdn.domekologe.eu/d6c3daa9-2e80-4cdb-8191-5c700b811e2e/2c85f136-2e4c-42e9-9428-7d478c6aa40b/686aabc3-38a9-47e9-8ef0-1844bf91198d.png)
+![Overview-2](https://cdn.domekologe.eu/d6c3daa9-2e80-4cdb-8191-5c700b811e2e/2c85f136-2e4c-42e9-9428-7d478c6aa40b/d87eee6e-513b-4fd0-ba81-f7c998a78eb3.png)
+![Trigger-1](https://cdn.domekologe.eu/d6c3daa9-2e80-4cdb-8191-5c700b811e2e/2c85f136-2e4c-42e9-9428-7d478c6aa40b/fa42a7e2-2b6b-448e-918d-19ac555497aa.png)
 ---
 
 ## Feature overview
