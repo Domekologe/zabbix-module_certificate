@@ -8,6 +8,9 @@ user macros through the internal Zabbix API.
 A **template-only alternative** is provided in `template_certificate_monitoring.yaml` for
 installations where a frontend module cannot be installed.
 
+![Overview](https://cdn.domekologe.eu/d6c3daa9-2e80-4cdb-8191-5c700b811e2e/2c85f136-2e4c-42e9-9428-7d478c6aa40b/686aabc3-38a9-47e9-8ef0-1844bf91198d.png)
+![Overview-2](https://cdn.domekologe.eu/d6c3daa9-2e80-4cdb-8191-5c700b811e2e/2c85f136-2e4c-42e9-9428-7d478c6aa40b/d87eee6e-513b-4fd0-ba81-f7c998a78eb3.png)
+![Trigger-1](https://cdn.domekologe.eu/d6c3daa9-2e80-4cdb-8191-5c700b811e2e/2c85f136-2e4c-42e9-9428-7d478c6aa40b/fa42a7e2-2b6b-448e-918d-19ac555497aa.png)
 ---
 
 ## Feature overview
@@ -224,17 +227,6 @@ Documented limitations of the agent check:
 ---
 
 ## Installation
-
-> **Upgrading from a build before 1.2.0:** the module IDs changed from `ilf_certmonitor` /
-> `ilf_certmonitor_widget` to `dks_certmonitor` / `dks_certmonitor_widget`. Zabbix keys the `module`
-> database table by ID, so after **Scan directory** the old entries disappear and the new ones show up
-> as freshly discovered modules — enable them again. One useful side effect: because a new ID counts
-> as a first discovery, the `config` defaults from `manifest.json` are written to the database this
-> time, which they are not for an already registered module. Settings you had entered on the settings
-> page are tied to the old ID and have to be entered once more.
->
-> The monitored hosts, items and triggers are unaffected by the rename — they are ordinary Zabbix
-> objects and keep collecting data throughout.
 
 1. Copy the `certmonitor` directory into the `modules` directory of the Zabbix frontend:
 
